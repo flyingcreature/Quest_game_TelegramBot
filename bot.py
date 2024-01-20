@@ -48,7 +48,7 @@ def send_welcome(message: Message):
     user_id = message.from_user.id
 
     if str(user_id) not in user_data:
-        markup.add(KeyboardButton("Начать прохождение🎮"))
+        markup.add(KeyboardButton("Начать прохождение 🎮"))
 
         text = f"Привет, {message.from_user.username} 👋. Скорее пройди эту игру!"
 
@@ -65,7 +65,7 @@ def send_welcome(message: Message):
         text = f"С возвращением, {message.from_user.username} 👋! Хочешь продолжить прохождение квеста?"
 
     else:
-        markup.add(KeyboardButton("Начать прохождение🎮"))
+        markup.add(KeyboardButton("Начать прохождение 🎮"))
 
         text = f"С возвращением, {message.from_user.username} 👋! Скорее пройди эту игру."
 
@@ -75,6 +75,16 @@ def send_welcome(message: Message):
         reply_markup=markup,
     )
 
+
+def send_photo(user_id, image_path):
+    try:
+        with open(image_path, 'rb') as img:
+            bot.send_photo(
+                chat_id=user_id,
+                photo=img
+            )
+    except TypeError:
+        pass
 
 @bot.message_handler(commands=["help"])
 def send_help(message: Message):
@@ -121,7 +131,7 @@ def send_game_rules(message: Message):
 
 def filter_continues(message: Message):
     """Функция-фильтр, для продолжения квеста с текущим показателем location пользователя."""
-    keywords = ["👉Продолжить👈", "Начать прохождение🎮"]
+    keywords = ["👉Продолжить👈", "Начать прохождение 🎮"]
     return message.text in keywords
 
 
@@ -152,14 +162,11 @@ def go_to_location(user_id):
     """Функция отправки вопроса."""
     location = user_data[str(user_id)]["location"]
     text, dop_mes, choices, scale, image_path = location_data[location].values()
+    path = location_data[location]["image"]
+
     markup = create_markup(choices)
 
-    with open(image_path, 'rb') as img:
-        bot.send_photo(
-            chat_id=user_id,
-            photo=img,
-            reply_markup=markup
-        )
+    send_photo(user_id, path)
 
     bot.send_message(
         chat_id=user_id,
@@ -174,15 +181,19 @@ def go_to_location(user_id):
 
 
 def end_game(user_id):
-    location = user_data[str(user_id)]["location"]
-    text = location_data[location]["message"]
-
     markup = ReplyKeyboardMarkup()
     markup.add("Начать заново 🫠")
 
+    location = user_data[str(user_id)]["location"]
+    text = location_data[location]["message"]
     user_data[str(user_id)]["location"] = "start"
     user_data[str(user_id)]["scale"] = 0
     save_data(user_data)
+
+    path = location_data[location]["image"]
+
+    send_photo(user_id, path)
+
     bot.send_message(
         chat_id=user_id,
         text=text,
@@ -193,11 +204,15 @@ def end_game(user_id):
 def ending(user_id):
     if user_data[str(user_id)]["scale"] < 19:
         text = location_data["Плохая концовка"]["message"]
+        path = location_data["Плохая концовка"]["image"]
     else:
         text = location_data["Хорошая концовка"]["message"]
+        path = location_data["Хорошая концовка"]["image"]
 
     markup = ReplyKeyboardMarkup()
     markup.add("Начать заново 🫠")
+
+    send_photo(user_id, path)
 
     bot.send_message(
         chat_id=user_id,
