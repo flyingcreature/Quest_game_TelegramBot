@@ -48,9 +48,9 @@ def send_welcome(message: Message):
     user_id = message.from_user.id
 
     if str(user_id) not in user_data:
-        markup.add(KeyboardButton("Начать приключение"))
+        markup.add(KeyboardButton("Начать прохождение🎮"))
 
-        text = f"Привет, {message.from_user.username}. Скорее пройди этот квест!"
+        text = f"Привет, {message.from_user.username} 👋. Скорее пройди эту игру!"
 
         user_data[str(user_id)] = {
             "Имя": message.from_user.username,
@@ -60,14 +60,14 @@ def send_welcome(message: Message):
         save_data(user_data)
 
     elif str(user_id) in user_data and user_data[str(user_id)]["location"] != "start":
-        markup.add(KeyboardButton("Продолжить"), KeyboardButton("Начать заново"))
+        markup.add(KeyboardButton("👉Продолжить👈"), KeyboardButton("Начать заново 🫠"))
 
-        text = f"С возвращением, {message.from_user.username}! Хочешь продолжить прохождение квеста?"
+        text = f"С возвращением, {message.from_user.username} 👋! Хочешь продолжить прохождение квеста?"
 
     else:
-        markup.add(KeyboardButton("Начать приключение"))
+        markup.add(KeyboardButton("Начать прохождение🎮"))
 
-        text = f"С возвращением, {message.from_user.username}! Скорее пройди эту викторину."
+        text = f"С возвращением, {message.from_user.username} 👋! Скорее пройди эту игру."
 
     bot.send_message(
         chat_id=user_id,
@@ -76,9 +76,52 @@ def send_welcome(message: Message):
     )
 
 
+@bot.message_handler(commands=["help"])
+def send_help(message: Message):
+    text = (
+        "Привет 🙋‍♂️, если ты тут значит тебя понадобилась помощь. \n\n"
+        "Правила игры можно найти с помощью функции /game_rules 📝. \n\n"
+        "Если возникла ошибка при игре, напиши мне, и я постораюсь её устранить. \n\n"
+        "Мои контакты можно найти в README файле на (https://github.com/flyingcreature/Quest_game_TelegramBot)"
+    )
+
+    markup = ReplyKeyboardMarkup()
+    markup.add("👉Продолжить👈")
+
+    bot.send_message(
+        chat_id=message.chat.id,
+        text=text,
+        reply_markup=markup
+    )
+
+
+@bot.message_handler(commands=["game_rules"])
+def send_game_rules(message: Message):
+    text = (
+        "Вы будите продвигаться по сюжету, отвечая на различные вопросы. "
+        "Ваша задача - прожить 1 день жизнью другого человека 🎭.\n"
+        "По результатам игры вы получите определенную концовку, соответствующую вашим результатам.\n\n"
+        "Что бы бот понимал вас, используйте встроенные команды(кнопки) 💬,\n"
+        "так же с ботом можно общаться при помощи обычного текста, но я все же советую команды(кнопки).\n\n"
+        "Разные вопросы ведут к разному развитию сюжета.\n\n"
+        "🟥 Cуществуют тупиковые вопросы - выбрав его вы проиграете.\n\n"
+        "🟩 Верные - отправляют вас на следующий вопрос.\n\n"
+        "🟨 А так же проходные вопросы. Если вы выберете такой, вам дадут на выбор еще несколько вопросов,"
+        " что бы вы решили, как окончательно поступить."
+    )
+    markup = ReplyKeyboardMarkup()
+    markup.add("👉Продолжить👈")
+
+    bot.send_message(
+        chat_id=message.chat.id,
+        text=text,
+        reply_markup=markup
+    )
+
+
 def filter_continues(message: Message):
     """Функция-фильтр, для продолжения квеста с текущим показателем location пользователя."""
-    keywords = ["Продолжить", "Начать приключение"]
+    keywords = ["👉Продолжить👈", "Начать прохождение🎮"]
     return message.text in keywords
 
 
@@ -91,7 +134,7 @@ def continue_solution(message: Message):
 
 def filter_restart(message: Message):
     """Функция-фильтр, для рестарта викторины с обнуленным показателем progress пользователя."""
-    return "Начать заново" == message.text
+    return "Начать заново 🫠" == message.text
 
 
 @bot.message_handler(func=filter_restart)
@@ -110,10 +153,13 @@ def go_to_location(user_id):
     location = user_data[str(user_id)]["location"]
     text, dop_mes, choices, scale, image_path = location_data[location].values()
     markup = create_markup(choices)
-    # bot.send_photo(
-    #     chat_id=user_id,
-    #     photo=open(image_path, "rb")
-    # )
+
+    with open(image_path, 'rb') as img:
+        bot.send_photo(
+            chat_id=user_id,
+            photo=img,
+            reply_markup=markup
+        )
 
     bot.send_message(
         chat_id=user_id,
@@ -132,7 +178,7 @@ def end_game(user_id):
     text = location_data[location]["message"]
 
     markup = ReplyKeyboardMarkup()
-    markup.add("Начать заново")
+    markup.add("Начать заново 🫠")
 
     user_data[str(user_id)]["location"] = "start"
     user_data[str(user_id)]["scale"] = 0
@@ -151,7 +197,7 @@ def ending(user_id):
         text = location_data["Хорошая концовка"]["message"]
 
     markup = ReplyKeyboardMarkup()
-    markup.add("Начать заново")
+    markup.add("Начать заново 🫠")
 
     bot.send_message(
         chat_id=user_id,
@@ -176,7 +222,7 @@ def handle_answer(message):
 
     if user_choice not in choices:
         bot.send_message(
-            user_id, "Пожалуйста, выберите один из предложенных вариантов."
+            user_id, "Пожалуйста, выберите один из предложенных вариантов 👉."
         )
         return
 
@@ -185,7 +231,7 @@ def handle_answer(message):
     user_data[str(user_id)]["scale"] += scale
     save_data(user_data)
     try:
-        if user_data[str(user_id)]["location"] not in ["Узнать результаты"]:
+        if user_data[str(user_id)]["location"] not in ["💥Узнать результаты💥"]:
             if scale != 0:
                 go_to_location(user_id)
             else:
