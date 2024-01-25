@@ -2,7 +2,7 @@ import telebot
 from telebot import apihelper
 from telebot.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from info import location_data
-import json
+from tool import load_data, save_data
 from dotenv import load_dotenv
 from os import getenv
 
@@ -11,28 +11,12 @@ token = getenv("BOT_TOKEN")
 
 bot = telebot.TeleBot(token)
 
-
-def load_data() -> dict:
-    """Функция загрузки данных из json."""
-    try:
-        with open("data.json", "r", encoding="utf-8") as file:
-            return json.load(file)
-    except (FileNotFoundError, json.decoder.JSONDecodeError):
-        return {}
-
-
-def save_data(data: dict):
-    """Функция сохранения данных в json."""
-    with open("data.json", "w", encoding="utf-8") as file:
-        json.dump(data, file, indent=2, ensure_ascii=False)
-
-
 user_data = load_data()
 
 
 def create_markup(answers: list):
     """Функция сборки клавиатуры."""
-    markup = ReplyKeyboardMarkup()
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
 
     for answer in answers:
         markup.add(answer)
@@ -43,7 +27,7 @@ def create_markup(answers: list):
 @bot.message_handler(commands=['start'])
 def send_welcome(message: Message):
     """Функция обработки команды /start."""
-    markup = ReplyKeyboardMarkup()
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
 
     user_id = message.from_user.id
 
@@ -76,12 +60,21 @@ def send_welcome(message: Message):
     )
 
 
-def send_photo(user_id, image_path):
+def filter_continues(message: Message):
+    """Функция-фильтр, для продолжения квеста с текущим показателем location пользователя."""
+    keywords = ["👉Продолжить👈", "Начать прохождение 🎮"]
+    return message.text in keywords
+
+
+def send_photo(user_id, image_path, msg, keyboard):
+    """Функция отправки медиа файла"""
     try:
         with open(image_path, 'rb') as img:
             bot.send_photo(
                 chat_id=user_id,
-                photo=img
+                photo=img,
+                caption=msg,
+                reply_markup=keyboard
             )
     except TypeError:
         pass
@@ -96,7 +89,7 @@ def send_help(message: Message):
         "Мои контакты можно найти в README файле на (https://github.com/flyingcreature/Quest_game_TelegramBot)"
     )
 
-    markup = ReplyKeyboardMarkup()
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("👉Продолжить👈")
 
     bot.send_message(
@@ -120,7 +113,7 @@ def send_game_rules(message: Message):
         "🟨 А так же проходные вопросы. Если вы выберете такой, вам дадут на выбор еще несколько вопросов,"
         " что бы вы решили, как окончательно поступить."
     )
-    markup = ReplyKeyboardMarkup()
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("👉Продолжить👈")
 
     bot.send_message(
@@ -128,12 +121,6 @@ def send_game_rules(message: Message):
         text=text,
         reply_markup=markup
     )
-
-
-def filter_continues(message: Message):
-    """Функция-фильтр, для продолжения квеста с текущим показателем location пользователя."""
-    keywords = ["👉Продолжить👈", "Начать прохождение 🎮"]
-    return message.text in keywords
 
 
 @bot.message_handler(func=filter_continues)
@@ -167,22 +154,20 @@ def go_to_location(user_id):
 
     markup = create_markup(choices)
 
-    send_photo(user_id, path)
+    try:
+        send_photo(user_id, path, text, markup)
 
-    bot.send_message(
-        chat_id=user_id,
-        text=text,
-        reply_markup=markup
-    )
-    bot.send_message(
-        chat_id=user_id,
-        text=dop_mes,
-        reply_markup=markup
-    )
+        bot.send_message(
+            chat_id=user_id,
+            text=dop_mes,
+            reply_markup=markup
+        )
+    except apihelper.ApiTelegramException:
+        pass
 
 
 def end_game(user_id):
-    markup = ReplyKeyboardMarkup()
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Начать заново 🫠")
 
     location = user_data[str(user_id)]["location"]
@@ -193,13 +178,7 @@ def end_game(user_id):
 
     path = location_data[location]["image"]
 
-    send_photo(user_id, path)
-
-    bot.send_message(
-        chat_id=user_id,
-        text=text,
-        reply_markup=markup
-    )
+    send_photo(user_id, path, text, markup)
 
 
 def ending(user_id):
@@ -210,16 +189,10 @@ def ending(user_id):
         text = location_data["Хорошая концовка"]["message"]
         path = location_data["Хорошая концовка"]["image"]
 
-    markup = ReplyKeyboardMarkup()
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("Начать заново 🫠")
 
-    send_photo(user_id, path)
-
-    bot.send_message(
-        chat_id=user_id,
-        text=text,
-        reply_markup=markup
-    )
+    send_photo(user_id, path, text, markup)
 
     end_game(user_id)
 
