@@ -231,4 +231,4 @@ def handle_answer(message):
         pass
 
 
-bot.polling(none_stop=True)
+bot.infinity_polling(timeout=60, long_polling_timeout=5)
